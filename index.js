@@ -31,30 +31,71 @@ async function run() {
     const bookingsCollection = client.db('aircncDb').collection('bookings')
 
     // save user email and role to database (using put to avoid duplicate)
-    app.put('/users/:email', async(req, res)=>{
-        const email = req.params.email;
-        const user = req.body;
-        const query = {email: email}
-        const options = {upsert: true}
-        const updateDoc = {
-            $set: user
-        }
-        const result = await usersCollection.updateOne(query,updateDoc,options)
-        console.log('user fetch: ', result)
-        res.send(result)
-    } )
+    app.put('/users/:email', async (req, res) => {
+      const email = req.params.email;
+      const user = req.body;
+      const query = { email: email }
+      const options = { upsert: true }
+      const updateDoc = {
+        $set: user
+      }
+      const result = await usersCollection.updateOne(query, updateDoc, options)
+      console.log('user fetch: ', result)
+      res.send(result)
+    })
+
+    // get user by email
+    app.get('/users/:email', async (req, res) => {
+      const email = req.params.email
+      const query = { email: email }
+      const result = await usersCollection.findOne(query)
+      console.log(result)
+      res.send(result)
+    })
+
 
     // get all rooms
-    app.get('/rooms', async(req, res)=>{
+    app.get('/rooms', async (req, res) => {
       const result = await roomsCollection.find({}).toArray()
       res.send(result)
     })
 
+    // get a single room
+    app.get('/room/:id', async (req, res) => {
+      const id = req.params.id
+      const query = { _id: new ObjectId(id) }
+      const result = await roomsCollection.findOne(query)
+      console.log(result)
+      res.send(result)
+    })
+
     // save a room in db
-    app.post('/rooms', async(req, res)=>{
-      const room= req.body
+    app.post('/rooms', async (req, res) => {
+      const room = req.body
       console.log(room)
       const result = await roomsCollection.insertOne(room)
+      res.send(result)
+    })
+
+    // update room booking status (so that a person can book only once) 
+    app.patch('/rooms/status/:id', async (req, res) => {
+      const id = req.params.id
+      const status = req.body.status
+      const query = { _id: new ObjectId(id) }
+      const updateDoc = {
+        $set: {
+          booked: status,
+        }
+      }
+      const update = await roomsCollection.updateOne(query, updateDoc)
+      res.send(update)
+    })
+
+    // save a booking in db
+    app.post('/bookings', async (req, res) => {
+      const booking = req.body
+      console.log(booking)
+      const result = await bookingsCollection.insertOne(booking)
       res.send(result)
     })
 
