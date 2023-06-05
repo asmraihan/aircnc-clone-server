@@ -60,6 +60,23 @@ async function run() {
       res.send(result)
     })
 
+    // get room posted by host filtered by email
+    app.get('/rooms/:email', async (req, res) => {
+      const email = req.params.email
+      const query = { 'host.email': email }
+      const result = await roomsCollection.find().toArray()
+      console.log(result)
+      res.send(result)
+    })
+
+    // delete a room from mylisting 
+    app.delete('/rooms/:id', async(req, res)=>{
+      const id = req.params.id
+      const query = { _id: new ObjectId(id) }
+      const result = await roomsCollection.deleteOne(query)
+      res.send(result)
+    })
+
     // get a single room
     app.get('/room/:id', async (req, res) => {
       const id = req.params.id
@@ -68,6 +85,8 @@ async function run() {
       console.log(result)
       res.send(result)
     })
+
+
 
     // save a room in db
     app.post('/rooms', async (req, res) => {
@@ -104,17 +123,17 @@ async function run() {
     //   res.send(result)
     // })
 
-      // Get bookings for guest
-      app.get('/bookings', async (req, res) => {
-        const email = req.query.email
-  
-        if (!email) {
-          res.send([])
-        }
-        const query = { 'guest.email': email }
-        const result = await bookingsCollection.find(query).toArray()
-        res.send(result)
-      })
+    // Get bookings for guest
+    app.get('/bookings', async (req, res) => {
+      const email = req.query.email
+
+      if (!email) {
+        res.send([])
+      }
+      const query = { 'guest.email': email }
+      const result = await bookingsCollection.find(query).toArray()
+      res.send(result)
+    })
 
 
     // save a booking in db
@@ -126,7 +145,7 @@ async function run() {
     })
 
     // delete a booking from db
-    app.delete('/bookings/:id', async(req, res)=>{
+    app.delete('/bookings/:id', async (req, res) => {
       const id = req.params.id
       const query = { _id: new ObjectId(id) }
       const result = await bookingsCollection.deleteOne(query)
