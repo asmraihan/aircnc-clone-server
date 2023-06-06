@@ -28,6 +28,26 @@ const client = new MongoClient(uri, {
   },
 })
 
+// validate jwt
+const verifyJWT = (req, res, next) => {
+  const authorization = req.headers.authorization
+  if (!authorization) {
+    return res.status(401).send({ error: true, message: 'Unauthorized' })
+  }
+  const token = authorization.split(' ')[1]
+  console.log(token)
+  // token verify
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ error: true, message: 'Unauthorized' })
+    }
+    req.decoded = decoded /* req er moddhe decoded proprty dhukai dilam. decoded er moddhe thakbe payload er data means token jeta diya banaisilam oitar email */
+    next()
+  })
+
+
+
+}
 
 async function run() {
   try {
@@ -39,7 +59,7 @@ async function run() {
     // generate jwt token 
     app.post('/jwt', (req, res) => { /* //!no need async */
       const email = req.body
-      const token = jwt.sign(email, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
+      const token = jwt.sign(email, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '7d' })
       // console.log(token)
       res.send({ token })
     })
@@ -72,11 +92,16 @@ async function run() {
       res.send(result)
     })
 
-    // get room posted by host filtered by email
-    app.get('/rooms/:email', async (req, res) => {
+    // get rooms posted by host filtered by email
+    app.get('/rooms/:email', verifyJWT, async (req, res) => { /* req er moddeh amra jwt er decoded add kore disi */
+      const decodedEmail = req.decoded.email
+      // console.log(decodedEmail)
       const email = req.params.email
+      if(email !== decodedEmail){
+        return res.status(403).send({error: true, message: 'Forbidden access'})
+      }
       const query = { 'host.email': email }
-      const result = await roomsCollection.find().toArray()
+      const result = await roomsCollection.find(query).toArray()
       res.send(result)
     })
 
