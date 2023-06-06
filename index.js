@@ -5,6 +5,7 @@ const cors = require('cors')
 const jwt = require('jsonwebtoken')
 require('dotenv').config()
 const port = process.env.PORT || 5000
+const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 
 // middleware
 const corsOptions = {
@@ -35,7 +36,6 @@ const verifyJWT = (req, res, next) => {
     return res.status(401).send({ error: true, message: 'Unauthorized' })
   }
   const token = authorization.split(' ')[1]
-  console.log(token)
   // token verify
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
     if (err) {
@@ -55,6 +55,19 @@ async function run() {
     const roomsCollection = client.db('aircncDb').collection('rooms')
     const bookingsCollection = client.db('aircncDb').collection('bookings')
 
+    // generate client secret
+    app.post('/create-payment-intent', verifyJWT, async (req, res) => {
+      const { price } = req.body
+      if (price) {
+        const amount = parseFloat(price) * 100
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: amount,
+          currency: 'usd',
+          payment_method_types: ['card']
+        })
+        res.send({ clientSecret: paymentIntent.client_secret })
+      }
+    })
 
     // generate jwt token 
     app.post('/jwt', (req, res) => { /* //!no need async */
@@ -97,8 +110,8 @@ async function run() {
       const decodedEmail = req.decoded.email
       // console.log(decodedEmail)
       const email = req.params.email
-      if(email !== decodedEmail){
-        return res.status(403).send({error: true, message: 'Forbidden access'})
+      if (email !== decodedEmail) {
+        return res.status(403).send({ error: true, message: 'Forbidden access' })
       }
       const query = { 'host.email': email }
       const result = await roomsCollection.find(query).toArray()
@@ -121,14 +134,26 @@ async function run() {
       res.send(result)
     })
 
-
-
     // save a room in db
     app.post('/rooms', async (req, res) => {
       const room = req.body
       const result = await roomsCollection.insertOne(room)
       res.send(result)
     })
+
+      // Update A room in db
+      app.put('/rooms/:id', verifyJWT, async (req, res) => {
+        const room = req.body
+        console.log(room)
+  
+        const filter = { _id: new ObjectId(req.params.id) }
+        const options = { upsert: true }
+        const updateDoc = {
+          $set: room,
+        }
+        const result = await roomsCollection.updateOne(filter, updateDoc, options)
+        res.send(result)
+      })
 
     // update room booking status (so that a person can book only once) 
     app.patch('/rooms/status/:id', async (req, res) => {
@@ -186,6 +211,10 @@ async function run() {
     app.post('/bookings', async (req, res) => {
       const booking = req.body
       const result = await bookingsCollection.insertOne(booking)
+      // send confirmation email to guest mail acc
+
+      // send confirmation email to host mail acc
+
       res.send(result)
     })
 
